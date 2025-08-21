@@ -1,18 +1,55 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useState } from 'react'
+import axios from 'axios'
 
 function TasksSection() {
 
   const [tasks, setTasks] = useState([]);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const addTask = () => {
-    if (input.trim()){
-      setTasks([...tasks, {id: Date.now(), text:input, completed:false}])
-      setInput('')
+  useEffect (() => {
+    fetchTasks()
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/tasks');
+      setTasks(res.data);
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
     }
-  }
+  };
 
+  const addTask = async () => {
+    if (input.trim()) {
+      try {
+        const res = await axios.post('http://localhost:5000/tasks', { title: input });
+        setTasks([...tasks, res.data]);
+        setInput('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+  const toggleTask = async (id, completed) => {
+    try {
+      const res = await axios.put(`http://localhost:5000/tasks/${id}`, { completed: !completed });
+      setTasks(tasks.map(t => t._id === id ? res.data : t));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteTask = async (id) => {
+    try {
+      await axios.delete(`http://localhost:5000/tasks/${id}`);
+      setTasks(tasks.filter(t => t._id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
   const handleKeyDown = (e) => {
     if (e.key === 'Enter'){
       addTask();
@@ -24,13 +61,16 @@ function TasksSection() {
         <div className='lg:flex justify-between'>
             <div className='pl-3'>
                 <h1 className='text-8xl'>Today</h1>
-                <h1 className='text-xl pl-5 pt-1 text-neutral-400'>Tasks Remaining: 5</h1>
+                <h1 className='text-2xl pl-5 pt-1 text-neutral-400'>Tasks Remaining: 5</h1>
             </div>
             <div className='lg:text-5xl text-3xl lg:pt-0 pt-5 flex pr-5'>
             <input value={input} onKeyDown={handleKeyDown} onChange={(e) => setInput(e.target.value)} type='text' placeholder='Add a Task' className='border-amber-500 rounded-l-xl border py-2 focus:outline-none focus:outline-neutral-100 focus:ring-1 pl-5' />
                 <button onClick={addTask} className='px-5 border rounded-r-lg border-amber-500 bg-amber-500  hover:bg-orange-500 hover:border-orange-500 cursor-pointer'>➕</button>
             </div>
         </div>
+        {loading ? (
+        <p className="text-white pl-8 mt-10">Loading tasks...</p>
+        ) : (
         <ul className='mt-10 space-y-5 mx-10'>
           {
             tasks.map((task) =>(
@@ -75,6 +115,7 @@ function TasksSection() {
             ))
           }
         </ul>
+        )}
     </div>
   )
 }
